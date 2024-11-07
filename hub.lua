@@ -4446,3 +4446,73 @@ end)
 				loadstring(game:HttpGet('https://raw.githubusercontent.com/DarkNetworks/Infinite-Yield/main/latest.lua'))()
 			end,
 		 })
+
+local Toggle = PlayerTab:CreateToggle({
+    Name = "Aimbot",
+    CurrentValue = false,
+    Flag = "Flag8", -- Unique identifier for saving configuration
+    Callback = function(Value)
+        local Players = game:GetService("Players")
+        local UserInputService = game:GetService("UserInputService")
+        local RunService = game:GetService("RunService")
+        
+        local localPlayer = Players.LocalPlayer
+        local camera = workspace.CurrentCamera
+        
+        local currentTarget = nil -- Store the current target
+        local targetingActive = false -- To check if targeting is active
+        
+        -- Function to find the closest player to the center of the screen
+        local function getClosestPlayerToCenter()
+            local closestPlayer = nil
+            local closestDistance = math.huge
+            local centerScreen = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= localPlayer and player.Team ~= localPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local screenPoint = camera:WorldToScreenPoint(player.Character.HumanoidRootPart.Position)
+                    local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - centerScreen).Magnitude
+                    
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = player
+                    end
+                end
+            end
+            
+            return closestPlayer
+        end
+        
+        -- Function to smoothly aim at the target position
+        local function smoothAim(targetPosition)
+            local targetDirection = (targetPosition - camera.CFrame.Position).unit
+            camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + targetDirection)
+        end
+        
+        -- Connection to handle aiming during RenderStepped
+        RunService.RenderStepped:Connect(function()
+            if Value then -- Check if the toggle is active
+                if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then -- RMB is held down
+                    if not targetingActive then
+                        currentTarget = getClosestPlayerToCenter() -- Find a new target
+                        
+                        if currentTarget and currentTarget.Character then
+                            local targetPosition = currentTarget.Character.HumanoidRootPart.Position
+                            smoothAim(targetPosition) -- Aim at the target
+                            targetingActive = true -- Set targeting to active
+                        end
+                    else
+                        -- If already targeting, aim at the current target
+                        if currentTarget and currentTarget.Character then
+                            local targetPosition = currentTarget.Character.HumanoidRootPart.Position
+                            smoothAim(targetPosition) -- Continue aiming
+                        end
+                    end
+                else
+                    targetingActive = false -- Reset targeting when RMB is released
+                    currentTarget = nil -- Clear current target
+                end
+            end
+        end)
+    end,
+})
